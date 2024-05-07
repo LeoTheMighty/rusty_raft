@@ -6,7 +6,7 @@ Here's ChatGPT's recommended project breakdown:
 
 ### Progress:
 - [x] Step 1: Project Setup
-- [ ] Step 2: Tokio and Async Setup
+- [x] Step 2: Tokio and Async Setup
 - [ ] Step 3: Protobuf and gRPC Integration
 - [ ] Step 4: Basic RAFT Protocol Impl
 - ...
