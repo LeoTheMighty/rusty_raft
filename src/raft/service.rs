@@ -2,7 +2,8 @@ use colored::Colorize;
 
 use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, watch};
+use tokio::task;
 
 use crate::raft::color::{RandomColor, pick_random_color};
 use crate::raft::protobufs::{RaftMessage, RaftResponse};
@@ -15,6 +16,9 @@ pub struct RustyRaft {
     color: RandomColor,
     server_address: String,
     client_addresses: Arc<Mutex<Vec<String>>>,
+
+    // Other fields
+    shutdown_tx: Arc<Mutex<Option<watch::Sender<()>>>>,
 }
 
 #[tonic::async_trait]
@@ -40,19 +44,46 @@ impl RustyRaft {
             color: RandomColor(pick_random_color()),
             server_address,
             client_addresses: Arc::new(Mutex::new(client_addresses)),
+            shutdown_tx: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub async fn run_server(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn run_server(&self) -> Result<(), Box<dyn std::error::Error>> {
         let addr = self.server_address.clone().parse()?;
         println!("Server listening on {}", addr);
 
-        Server::builder()
-            .add_service(RaftServiceServer::new(self.clone()))
-            .serve(addr)
-            .await?;
+        let mut shutdown_rx = self.shutdown_tx.lock().await.as_ref().unwrap().subscribe();
 
+        let server = Server::builder()
+            .add_service(RaftServiceServer::new(self.clone()))
+            .serve_with_shutdown(addr, async {
+                shutdown_rx.changed().await.ok();
+            });
+
+        self.log("Server started...".to_string());
+
+        server.await?;
+
+        println!("Server shut down gracefully.");
         Ok(())
+    }
+
+    pub async fn start_server(&self) {
+        let raft_clone = self.clone();
+        let (shutdown_tx, _shutdown_rx) = watch::channel(());
+        *self.shutdown_tx.lock().await = Some(shutdown_tx);
+
+        task::spawn(async move {
+            if let Err(e) = raft_clone.run_server().await {
+                eprintln!("Server error: {}", e);
+            }
+        });
+    }
+
+    pub async fn stop_server(&self) {
+        if let Some(shutdown_tx) = self.shutdown_tx.lock().await.take() {
+            let _ = shutdown_tx.send(());
+        }
     }
 
     pub async fn send_message_to_clients(&self, data: String) -> Result<(), Box<dyn std::error::Error>> {
@@ -81,6 +112,7 @@ impl Clone for RustyRaft {
             color: RandomColor((*self.color).clone()),
             server_address: self.server_address.clone(),
             client_addresses: Arc::clone(&self.client_addresses),
+            shutdown_tx: Arc::clone(&self.shutdown_tx),
         }
     }
 }
