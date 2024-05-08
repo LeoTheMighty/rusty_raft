@@ -1,5 +1,6 @@
 use colored::Colorize;
 
+use std::net::SocketAddr;
 use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
 use tokio::sync::{Mutex, watch};
@@ -28,7 +29,7 @@ impl RaftService for RustyRaft {
         request: Request<RaftMessage>,
     ) -> Result<Response<RaftResponse>, Status> {
         let message = request.into_inner().data;
-        println!("Received: {}", message);
+        self.log(format!("Received: {}", message));
 
         let reply = RaftResponse {
             result: format!("Processed: {}", message),
@@ -49,8 +50,8 @@ impl RustyRaft {
     }
 
     async fn run_server(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let addr = self.server_address.clone().parse()?;
-        println!("Server listening on {}", addr);
+        let addr: SocketAddr = self.server_address.clone().parse()?;
+        self.log(format!("Server listening on {}", addr));
 
         let mut shutdown_rx = self.shutdown_tx.lock().await.as_ref().unwrap().subscribe();
 
@@ -64,7 +65,7 @@ impl RustyRaft {
 
         server.await?;
 
-        println!("Server shut down gracefully.");
+        self.log("Server shut down gracefully.".to_string());
         Ok(())
     }
 
@@ -89,19 +90,32 @@ impl RustyRaft {
     pub async fn send_message_to_clients(&self, data: String) -> Result<(), Box<dyn std::error::Error>> {
         let clients = self.client_addresses.lock().await;
         for address in clients.iter() {
-            let mut client = RaftServiceClient::connect(address.clone()).await?;
-            let request = Request::new(RaftMessage { data: data.clone() });
+            self.log(format!("Sending message to: {}", address));
 
-            match client.send_raft_message(request).await {
-                Ok(response) => println!("Received response: {:?}", response.into_inner()),
-                Err(e) => println!("Error sending message to {}: {}", address, e),
+            // Ensure the address has the http:// scheme
+            let url = if address.starts_with("http://") || address.starts_with("https://") {
+                address.clone()
+            } else {
+                format!("http://{}", address)
+            };
+
+            match RaftServiceClient::connect(url.clone()).await {
+                Ok(mut client) => {
+                    let request = Request::new(RaftMessage { data: data.clone() });
+
+                    match client.send_raft_message(request).await {
+                        Ok(response) => self.log(format!("Received response: {:?}", response.into_inner())),
+                        Err(e) => eprintln!("Error sending message to {}: {}", address, e),
+                    }
+                }
+                Err(e) => eprintln!("Error connecting to {}: {}", address, e),
             }
         }
         Ok(())
     }
 
     pub fn log(&self, message: String) {
-        println!("{}", format!("[{}]: {}", self.node_id, message).color(*self.color));
+        println!("{}", format!("[Node: {}]: {}", self.node_id, message).color(*self.color));
     }
 }
 

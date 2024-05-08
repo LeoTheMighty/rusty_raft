@@ -1,17 +1,19 @@
-use std::process::{Command, Child};
-use std::thread;
-use std::time::Duration;
+use tokio::process::{Command, Child};
+use std::process::Stdio;
 
-fn start_node(node_id: u32, address: &String, client_addresses: Vec<String>) -> Child {
+async fn start_node(node_id: u32, address: String, client_addresses: Vec<String>) -> Child {
     Command::new("cargo")
-        .args(["run", "--quiet", "--", &node_id.to_string(), address, &client_addresses.join(",")])
+        .args(&["run", "--quiet", "--", &node_id.to_string(), &address, &client_addresses.join(",")])
         .env("RUST_LOG", "info")
         .env("RUSTFLAGS", "-A warnings")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .spawn()
         .expect("failed to start node process")
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut children = vec![];
 
     let start_port = 50050;
@@ -19,18 +21,27 @@ fn main() {
     // Start 5 nodes
     for id in 1..=5 {
         let address = format!("[::1]:{}", start_port + id);
-        children.push(start_node(
+        let client_addresses_clone: Vec<String> = client_addresses
+            .clone()
+            .into_iter()
+            .filter(|s| s != &address)
+            .collect();
+        children.push(tokio::task::spawn(start_node(
             id,
-            &address,
-            client_addresses.clone().iter().filter(|s| !s.starts_with(&address)).map(|s| s.to_string()).collect(),
-        ));
+            address,
+            client_addresses_clone
+        )));
     }
 
     // Run for some time
-    thread::sleep(Duration::from_secs(10));
+    tokio::time::sleep(tokio::time::Duration::from_secs(40)).await;
 
     // Wait for other nodes to finish
-    for mut child in children {
-        child.wait().expect("failed waiting for node");
+    // Wait for other nodes to finish
+    for handle in children {
+        if let Ok(mut child) = handle.await {
+            child.wait().await.expect("failed waiting for node");
+        }
     }
+
 }
