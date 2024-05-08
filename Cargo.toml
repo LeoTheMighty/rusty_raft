@@ -2,8 +2,13 @@
 name = "rusty_raft"
 version = "0.1.0"
 edition = "2021"
+default-run = "raft_node"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+prost-build = "0.12.4"
+tonic-build = "0.11.0"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
@@ -12,5 +17,15 @@ prost = "0.12.4"
 prost-types = "0.12.4"
 tonic = "0.11.0"
 protobuf = "3.4.0"
-prost-build = "0.12.4"
-tonic-build = "0.11.0"
+
+[[bin]]  # Main application binary
+name = "raft_node"
+path = "src/main.rs"
+
+[[bin]]
+name = "run_one_client"
+path = "simulations/run_one_client.rs"
+
+[[bin]]
+name = "run_five_clients"
+path = "simulations/run_five_clients.rs"
