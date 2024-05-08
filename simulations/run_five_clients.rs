@@ -17,14 +17,14 @@ async fn main() {
     let mut children = vec![];
 
     let start_port = 50050;
-    let client_addresses = vec!["[::1]:50051".to_string(), "[::1]:50052".to_string(), "[::1]:50053".to_string(), "[::1]:50054".to_string(), "[::1]:50055".to_string()];
+    let client_addresses = vec!["[::1]:50051|1".to_string(), "[::1]:50052|2".to_string(), "[::1]:50053|3".to_string(), "[::1]:50054|4".to_string(), "[::1]:50055|5".to_string()];
     // Start 5 nodes
     for id in 1..=5 {
         let address = format!("[::1]:{}", start_port + id);
         let client_addresses_clone: Vec<String> = client_addresses
             .clone()
             .into_iter()
-            .filter(|s| s != &address)
+            .filter(|s| s != &(address.clone() + id.to_string().as_str()))
             .collect();
         children.push(tokio::task::spawn(start_node(
             id,
