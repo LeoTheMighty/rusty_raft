@@ -17,6 +17,8 @@ prost = "0.12.4"
 prost-types = "0.12.4"
 tonic = "0.11.0"
 protobuf = "3.4.0"
+colored = "2.1.0"
+rand = "0.8.5"
 
 [[bin]]  # Main application binary
 name = "raft_node"
