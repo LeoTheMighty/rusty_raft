@@ -6,8 +6,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let proto_file = "./src/raft/proto/raft.proto";
 
-    let src = Path::new("src/raft/proto/gen/raft");
-    let dst = Path::new("src/raft_protobufs.rs");
+    let src = Path::new("src/raft/proto/gen/raft.rs");
+    let dst = Path::new("src/raft/protobufs.rs");
 
     tonic_build::configure()
         .build_server(true)

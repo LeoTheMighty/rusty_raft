@@ -4,6 +4,7 @@ package raft;
 
 service RaftService {
   rpc SendRaftMessage(RaftMessage) returns (RaftResponse);
+  rpc SendHeartbeat(Heartbeat) returns (Ack);
 }
 
 // The request message containing the data
@@ -14,4 +15,16 @@ message RaftMessage {
 // The response message containing the results
 message RaftResponse {
   string result = 1;
+}
+
+// The Heartbeat message to be sent by the leader
+message Heartbeat {
+  int64 term = 1;
+  string leader_id = 2;
+}
+
+// The Ack response message to be sent by followers
+message Ack {
+  int64 term = 1;
+  bool success = 2;
 }
