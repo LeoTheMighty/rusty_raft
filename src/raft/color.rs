@@ -1,5 +1,8 @@
 use colored::Color;
 use rand::{thread_rng, seq::SliceRandom};
+use std::ops::Deref;
+
+pub struct RandomColor(pub Color);
 
 pub fn pick_random_color() -> Color {
     // List of available colors
@@ -27,4 +30,18 @@ pub fn pick_random_color() -> Color {
 
     // Pick a random color
     *colors.choose(&mut rng).unwrap()
+}
+
+impl Default for RandomColor {
+    fn default() -> Self {
+        RandomColor(pick_random_color())
+    }
+}
+
+impl Deref for RandomColor {
+    type Target = Color;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }

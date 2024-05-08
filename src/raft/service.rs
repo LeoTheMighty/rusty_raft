@@ -1,10 +1,10 @@
-use colored::{Color, Colorize};
+use colored::Colorize;
 
 use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::raft::color::pick_random_color;
+use crate::raft::color::{RandomColor, pick_random_color};
 use crate::raft::protobufs::{RaftMessage, RaftResponse};
 use crate::raft::protobufs::raft_service_server::{RaftService, RaftServiceServer};
 use crate::raft::protobufs::raft_service_client::RaftServiceClient;
@@ -12,7 +12,7 @@ use crate::raft::protobufs::raft_service_client::RaftServiceClient;
 #[derive(Default)]
 pub struct RustyRaft {
     node_id: String,
-    color: Color,
+    color: RandomColor,
     server_address: String,
     client_addresses: Arc<Mutex<Vec<String>>>,
 }
@@ -35,10 +35,9 @@ impl RaftService for RustyRaft {
 
 impl RustyRaft {
     pub async fn new(node_id: String, server_address: String, client_addresses: Vec<String>) -> Self {
-        let color = pick_random_color();
         RustyRaft {
             node_id,
-            color,
+            color: RandomColor(pick_random_color()),
             server_address,
             client_addresses: Arc::new(Mutex::new(client_addresses)),
         }
@@ -71,7 +70,7 @@ impl RustyRaft {
     }
 
     pub fn log(&self, message: String) {
-        println!("{}", format!("[{}]: {}", self.node_id, message).color(self.color));
+        println!("{}", format!("[{}]: {}", self.node_id, message).color(*self.color));
     }
 }
 
@@ -79,7 +78,7 @@ impl Clone for RustyRaft {
     fn clone(&self) -> Self {
         RustyRaft {
             node_id: self.node_id.clone(),
-            color: self.color.clone(),
+            color: RandomColor((*self.color).clone()),
             server_address: self.server_address.clone(),
             client_addresses: Arc::clone(&self.client_addresses),
         }

@@ -1,5 +1,3 @@
-use tonic::{transport::Server, Request, Response, Status};
-
 mod raft;
 
 use std::env::args;
