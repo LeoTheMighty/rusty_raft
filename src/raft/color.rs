@@ -7,9 +7,7 @@ pub struct RandomColor(pub Color);
 pub fn pick_random_color() -> Color {
     // List of available colors
     let colors = [
-        Color::Red,
         Color::Green,
-        Color::Yellow,
         Color::Blue,
         Color::Magenta,
         Color::Cyan,
