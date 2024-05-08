@@ -2,7 +2,7 @@ mod raft;
 
 use std::env::args;
 use std::io;
-use raft::service::RustyRaft;
+use raft::raft::RustyRaft;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

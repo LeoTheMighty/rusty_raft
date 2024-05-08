@@ -1,37 +1,12 @@
-use colored::Colorize;
-
 use std::net::SocketAddr;
 use tonic::{transport::Server, Request, Response, Status};
-use std::sync::Arc;
-use tokio::sync::{Mutex, watch};
+use tokio::sync::watch;
 use tokio::task;
 
-use crate::raft::color::{RandomColor, pick_random_color};
+use crate::raft::raft::RustyRaft;
 use crate::raft::protobufs::{Ack, Heartbeat, RaftMessage, RaftResponse};
 use crate::raft::protobufs::raft_service_server::{RaftService, RaftServiceServer};
 use crate::raft::protobufs::raft_service_client::RaftServiceClient;
-
-struct Client {
-    address: String,
-    node_id: String,
-}
-
-impl std::fmt::Debug for Client {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[Node {}: ({})]", self.node_id, self.address)
-    }
-}
-
-#[derive(Default)]
-pub struct RustyRaft {
-    node_id: String,
-    color: RandomColor,
-    server_address: String,
-    clients: Arc<Mutex<Vec<Client>>>,
-
-    // Other fields
-    shutdown_tx: Arc<Mutex<Option<watch::Sender<()>>>>,
-}
 
 #[tonic::async_trait]
 impl RaftService for RustyRaft {
@@ -59,21 +34,6 @@ impl RaftService for RustyRaft {
 }
 
 impl RustyRaft {
-    pub async fn new(node_id: String, server_address: String, clients_info: Vec<(String, String)>) -> Self {
-        let clients = clients_info.iter().map(|info| Client {
-            address: info.0.clone(),
-            node_id: info.1.clone(),
-        }).collect();
-
-        RustyRaft {
-            node_id,
-            color: RandomColor(pick_random_color()),
-            server_address,
-            clients: Arc::new(Mutex::new(clients)),
-            shutdown_tx: Arc::new(Mutex::new(None)),
-        }
-    }
-
     async fn run_server(&self) -> Result<(), Box<dyn std::error::Error>> {
         let addr: SocketAddr = self.server_address.clone().parse()?;
         self.log(format!("Server listening on {}", addr));
@@ -172,19 +132,17 @@ impl RustyRaft {
         Ok(())
     }
 
-    pub fn log(&self, message: String) {
-        println!("{}", format!("[Node: {}]: {}", self.node_id, message).color(*self.color));
+    pub fn set_timeout(&self) {
+        self.timeout_handler.set_random_timeout(self.handle_timeout())
     }
-}
 
-impl Clone for RustyRaft {
-    fn clone(&self) -> Self {
-        RustyRaft {
-            node_id: self.node_id.clone(),
-            color: RandomColor((*self.color).clone()),
-            server_address: self.server_address.clone(),
-            clients: Arc::clone(&self.clients),
-            shutdown_tx: Arc::clone(&self.shutdown_tx),
-        }
+    pub fn cancel_timeout(&self) {
+        self.timeout_handler.cancel_timeout()
+    }
+
+    async fn handle_timeout(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self.log("Received timeout!!".to_string());
+
+        Ok(())
     }
 }
