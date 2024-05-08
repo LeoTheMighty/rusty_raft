@@ -116,7 +116,7 @@ pub mod raft_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        pub async fn send_raft_message(
+        pub async fn process_raft_message(
             &mut self,
             request: impl tonic::IntoRequest<super::RaftMessage>,
         ) -> std::result::Result<tonic::Response<super::RaftResponse>, tonic::Status> {
@@ -131,14 +131,14 @@ pub mod raft_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/raft.RaftService/SendRaftMessage",
+                "/raft.RaftService/ProcessRaftMessage",
             );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("raft.RaftService", "SendRaftMessage"));
+                .insert(GrpcMethod::new("raft.RaftService", "ProcessRaftMessage"));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn send_heartbeat(
+        pub async fn process_heartbeat(
             &mut self,
             request: impl tonic::IntoRequest<super::Heartbeat>,
         ) -> std::result::Result<tonic::Response<super::Ack>, tonic::Status> {
@@ -153,11 +153,11 @@ pub mod raft_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/raft.RaftService/SendHeartbeat",
+                "/raft.RaftService/ProcessHeartbeat",
             );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("raft.RaftService", "SendHeartbeat"));
+                .insert(GrpcMethod::new("raft.RaftService", "ProcessHeartbeat"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -169,11 +169,11 @@ pub mod raft_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with RaftServiceServer.
     #[async_trait]
     pub trait RaftService: Send + Sync + 'static {
-        async fn send_raft_message(
+        async fn process_raft_message(
             &self,
             request: tonic::Request<super::RaftMessage>,
         ) -> std::result::Result<tonic::Response<super::RaftResponse>, tonic::Status>;
-        async fn send_heartbeat(
+        async fn process_heartbeat(
             &self,
             request: tonic::Request<super::Heartbeat>,
         ) -> std::result::Result<tonic::Response<super::Ack>, tonic::Status>;
@@ -257,11 +257,11 @@ pub mod raft_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/raft.RaftService/SendRaftMessage" => {
+                "/raft.RaftService/ProcessRaftMessage" => {
                     #[allow(non_camel_case_types)]
-                    struct SendRaftMessageSvc<T: RaftService>(pub Arc<T>);
+                    struct ProcessRaftMessageSvc<T: RaftService>(pub Arc<T>);
                     impl<T: RaftService> tonic::server::UnaryService<super::RaftMessage>
-                    for SendRaftMessageSvc<T> {
+                    for ProcessRaftMessageSvc<T> {
                         type Response = super::RaftResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -273,7 +273,8 @@ pub mod raft_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as RaftService>::send_raft_message(&inner, request).await
+                                <T as RaftService>::process_raft_message(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -285,7 +286,7 @@ pub mod raft_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = SendRaftMessageSvc(inner);
+                        let method = ProcessRaftMessageSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -301,11 +302,11 @@ pub mod raft_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/raft.RaftService/SendHeartbeat" => {
+                "/raft.RaftService/ProcessHeartbeat" => {
                     #[allow(non_camel_case_types)]
-                    struct SendHeartbeatSvc<T: RaftService>(pub Arc<T>);
+                    struct ProcessHeartbeatSvc<T: RaftService>(pub Arc<T>);
                     impl<T: RaftService> tonic::server::UnaryService<super::Heartbeat>
-                    for SendHeartbeatSvc<T> {
+                    for ProcessHeartbeatSvc<T> {
                         type Response = super::Ack;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
@@ -317,7 +318,7 @@ pub mod raft_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as RaftService>::send_heartbeat(&inner, request).await
+                                <T as RaftService>::process_heartbeat(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -329,7 +330,7 @@ pub mod raft_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = SendHeartbeatSvc(inner);
+                        let method = ProcessHeartbeatSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

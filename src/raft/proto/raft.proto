@@ -3,8 +3,8 @@ syntax = "proto3";
 package raft;
 
 service RaftService {
-  rpc SendRaftMessage(RaftMessage) returns (RaftResponse);
-  rpc SendHeartbeat(Heartbeat) returns (Ack);
+  rpc ProcessRaftMessage(RaftMessage) returns (RaftResponse);
+  rpc ProcessHeartbeat(Heartbeat) returns (Ack);
 }
 
 // The request message containing the data

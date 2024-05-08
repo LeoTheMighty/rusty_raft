@@ -7,7 +7,7 @@ use tokio::sync::{Mutex, watch};
 use tokio::task;
 
 use crate::raft::color::{RandomColor, pick_random_color};
-use crate::raft::protobufs::{RaftMessage, RaftResponse};
+use crate::raft::protobufs::{Ack, Heartbeat, RaftMessage, RaftResponse};
 use crate::raft::protobufs::raft_service_server::{RaftService, RaftServiceServer};
 use crate::raft::protobufs::raft_service_client::RaftServiceClient;
 
@@ -24,7 +24,7 @@ pub struct RustyRaft {
 
 #[tonic::async_trait]
 impl RaftService for RustyRaft {
-    async fn send_raft_message(
+    async fn process_raft_message(
         &self,
         request: Request<RaftMessage>,
     ) -> Result<Response<RaftResponse>, Status> {
@@ -35,6 +35,15 @@ impl RaftService for RustyRaft {
             result: format!("Processed: {}", message),
         };
         Ok(Response::new(reply))
+    }
+
+    async fn process_heartbeat(&self, request: Request<Heartbeat>) -> Result<Response<Ack>, Status> {
+        let heartbeat = request.into_inner();
+
+        Ok(Response::new(Ack {
+            term: heartbeat.term,
+            success: true,
+        }))
     }
 }
 
@@ -103,7 +112,7 @@ impl RustyRaft {
                 Ok(mut client) => {
                     let request = Request::new(RaftMessage { data: data.clone() });
 
-                    match client.send_raft_message(request).await {
+                    match client.process_raft_message(request).await {
                         Ok(response) => self.log(format!("Received response: {:?}", response.into_inner())),
                         Err(e) => eprintln!("Error sending message to {}: {}", address, e),
                     }
