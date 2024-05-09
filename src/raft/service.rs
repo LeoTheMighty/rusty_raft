@@ -1,14 +1,13 @@
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tokio::sync::Mutex;
 
 use crate::raft::raft::RustyRaft;
 use crate::raft::protobufs::{Ack, Heartbeat, RaftMessage, RaftResponse};
 use crate::raft::protobufs::raft_service_server::RaftService;
-use crate::raft::state::State;
+// use crate::raft::state::State;
 
 #[tonic::async_trait]
-impl RaftService for RustyRaft {
+impl RaftService for Arc<RustyRaft> {
     async fn process_raft_message(
         &self,
         request: Request<RaftMessage>,
@@ -25,7 +24,7 @@ impl RaftService for RustyRaft {
     async fn process_heartbeat(&self, request: Request<Heartbeat>) -> Result<Response<Ack>, Status> {
         let heartbeat = request.into_inner();
 
-        self.reset_timeout();
+        self.clone().reset_timeout();
 
         Ok(Response::new(Ack {
             term: heartbeat.term,
@@ -48,25 +47,26 @@ impl RustyRaft {
         Ok(())
     }
 
-    pub fn reset_timeout(&self) {
+    pub fn reset_timeout(self: Arc<Self>) {
         let state = Arc::clone(&self.state);
         let timeout_handler = Arc::clone(&self.timeout_handler);
+        let timeout = self.timeout_handler.get_random_timeout();
         tokio::spawn(async move {
-            timeout_handler.set_random_timeout(async move {
-                RustyRaft::handle_timeout(state).await;
+            timeout_handler.set_timeout(timeout, async move {
+                self.handle_timeout().await;
             }).await
         });
     }
 
-    pub fn cancel_timeout(&self) {
+    pub fn cancel_timeout(self: Arc<Self>) {
         let timeout_handler = Arc::clone(&self.timeout_handler);
         tokio::spawn(async move {
             timeout_handler.cancel_timeout().await;
         });
     }
 
-    pub async fn handle_timeout(state: Arc<Mutex<State>>) {
-        let state = state.lock().await;
-        println!("{}: Timeout", state.current_term);
+    pub async fn handle_timeout(self: Arc<Self>) {
+        // let state = state.lock().await;
+        self.log("Timeout".to_string());
     }
 }

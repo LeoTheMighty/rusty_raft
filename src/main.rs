@@ -37,11 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         clients_info
     ).await);
 
-    raft_service.start_server().await;
+    raft_service.clone().start_server().await;
+
+    raft_service.clone().reset_timeout();
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-    // raft_service.send_heartbeats_to_clients().await?;
+    raft_service.clone().send_heartbeats_to_clients().await?;
 
     tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
 

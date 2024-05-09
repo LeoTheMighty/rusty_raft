@@ -26,20 +26,17 @@ impl TimeoutHandler {
         }
     }
 
-    pub async fn set_random_timeout<F>(&self, fut: F) where F: Future<Output = ()> + Send + 'static {
-        self.set_timeout(
-            Duration::from_millis(
-                rand::thread_rng().gen_range(TIMEOUT_MIN..=TIMEOUT_MAX),
-            ),
-            fut
-        ).await
+    pub fn get_random_timeout(&self) -> Duration {
+        Duration::from_millis(
+            rand::thread_rng().gen_range(TIMEOUT_MIN..=TIMEOUT_MAX),
+        )
     }
 
     pub async fn cancel_timeout(&self) {
         self.cancel_tx.lock().await.take().unwrap().send(()).await.unwrap();
     }
 
-    async fn set_timeout<F>(&self, duration: Duration, fut: F)
+    pub async fn set_timeout<F>(&self, duration: Duration, fut: F)
         where
             F: Future<Output = ()> + Send + 'static,
     {

@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task;
 use tonic::transport::Server;
@@ -6,7 +7,7 @@ use crate::raft::protobufs::raft_service_server::RaftServiceServer;
 use crate::raft::raft::RustyRaft;
 
 impl RustyRaft {
-    async fn run_server(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn run_server(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
         let addr: SocketAddr = self.server_address.clone().parse()?;
         self.log(format!("Server listening on {}", addr));
 
@@ -20,7 +21,7 @@ impl RustyRaft {
 
         self.log("Server started...".to_string());
 
-        self.reset_timeout();
+        self.clone().reset_timeout();
 
         server.await?;
 
@@ -28,7 +29,7 @@ impl RustyRaft {
         Ok(())
     }
 
-    pub async fn start_server(&self) {
+    pub async fn start_server(self: Arc<Self>) {
         let raft_clone = self.clone();
         let (shutdown_tx, _shutdown_rx) = watch::channel(());
         *self.shutdown_tx.lock().await = Some(shutdown_tx);
@@ -40,7 +41,7 @@ impl RustyRaft {
         });
     }
 
-    pub async fn stop_server(&self) {
+    pub async fn stop_server(self: Arc<Self>) {
         if let Some(shutdown_tx) = self.shutdown_tx.lock().await.take() {
             let _ = shutdown_tx.send(());
         }
