@@ -21,7 +21,7 @@ impl RustyRaft {
 
         self.log("Server started...".to_string());
 
-        self.clone().reset_idle_timeout();
+        self.clone().set_follower_role().await;
 
         server.await?;
 
@@ -42,6 +42,8 @@ impl RustyRaft {
     }
 
     pub async fn stop_server(self: Arc<Self>) {
+        self.log("Shutting down server...".to_string());
+
         if let Some(shutdown_tx) = self.shutdown_tx.lock().await.take() {
             let _ = shutdown_tx.send(());
         }

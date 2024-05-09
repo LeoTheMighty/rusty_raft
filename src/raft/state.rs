@@ -1,13 +1,8 @@
+#[derive(PartialEq, Clone)]
 pub enum Role {
     Follower = 0,
     Candidate = 1,
     Leader = 2,
-}
-
-impl PartialEq for Role {
-    fn eq(&self, other: &Self) -> bool {
-        self == other
-    }
 }
 
 pub struct State {

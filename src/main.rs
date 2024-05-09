@@ -41,11 +41,7 @@ async fn main() -> Result<(), DynamicError> {
 
     raft_service.clone().start_server().await;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-
-    raft_service.clone().send_heartbeats_to_clients().await?;
-
-    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+    tokio::signal::ctrl_c().await?;
 
     raft_service.stop_server().await;
 
