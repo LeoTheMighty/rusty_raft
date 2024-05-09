@@ -5,6 +5,7 @@ package raft;
 service RaftService {
   rpc ProcessRaftMessage(RaftMessage) returns (RaftResponse);
   rpc ProcessHeartbeat(Heartbeat) returns (Ack);
+  rpc ProcessRequestVote(RequestVote) returns (RequestVoteResponse);
 }
 
 // The request message containing the data
@@ -27,4 +28,14 @@ message Heartbeat {
 message Ack {
   int64 term = 1;
   bool success = 2;
+}
+
+message RequestVote {
+  int64 term = 1;
+  string candidate_id = 2;
+}
+
+message RequestVoteResponse {
+  int64 term = 1;
+  bool vote_granted = 2;
 }
