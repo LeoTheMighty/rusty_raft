@@ -5,4 +5,5 @@ pub mod raft;
 pub mod service;
 mod state;
 pub mod time;
-mod server;
+pub mod server;
+pub mod types;

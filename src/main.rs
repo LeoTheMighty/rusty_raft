@@ -6,8 +6,10 @@ use raft::raft::RustyRaft;
 
 use std::sync::Arc;
 
+use crate::raft::types::DynamicError;
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), DynamicError> {
     let args: Vec<String> = args().collect();
     if args.len() < 3 {
         eprintln!("Usage: <node_id> <server_address> <clients>");
@@ -38,8 +40,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ).await);
 
     raft_service.clone().start_server().await;
-
-    raft_service.clone().reset_timeout();
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 

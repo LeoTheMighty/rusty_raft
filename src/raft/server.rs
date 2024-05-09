@@ -21,7 +21,7 @@ impl RustyRaft {
 
         self.log("Server started...".to_string());
 
-        self.clone().reset_timeout();
+        self.clone().reset_idle_timeout();
 
         server.await?;
 

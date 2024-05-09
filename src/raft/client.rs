@@ -1,6 +1,7 @@
 use tonic::Request;
-use crate::raft::protobufs::{Ack, Heartbeat};
+use crate::raft::protobufs::{Ack, Heartbeat, RequestVote, RequestVoteResponse};
 use crate::raft::protobufs::raft_service_client::RaftServiceClient;
+use crate::raft::types::DynamicError;
 
 pub struct Client {
     pub address: String,
@@ -40,16 +41,29 @@ impl Client {
         }
     }
 
-    pub async fn send_heartbeat(&self, request: Heartbeat) -> Result<Ack, Box<dyn std::error::Error>> {
+    pub async fn send_heartbeat(&self, request: Heartbeat) -> Result<Ack, DynamicError> {
         let url = self.url.clone();
         match RaftServiceClient::connect(url.clone()).await {
             Ok(mut client) => {
                 match client.process_heartbeat(Request::new(request)).await {
                     Ok(response) => Ok(response.into_inner()),
-                    Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
+                    Err(e) => Err(Box::new(e) as DynamicError),
                 }
             }
-            Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
+            Err(e) => Err(Box::new(e) as DynamicError),
+        }
+    }
+
+    pub async fn send_request_vote(&self, request: RequestVote) -> Result<RequestVoteResponse, DynamicError> {
+        let url = self.url.clone();
+        match RaftServiceClient::connect(url.clone()).await {
+            Ok(mut client) => {
+                match client.process_request_vote(Request::new(request)).await {
+                    Ok(response) => Ok(response.into_inner()),
+                    Err(e) => Err(Box::new(e) as DynamicError),
+                }
+            }
+            Err(e) => Err(Box::new(e) as DynamicError),
         }
     }
 }

@@ -7,6 +7,9 @@ use rand::Rng;
 const TIMEOUT_MIN: u64 = 1000;
 const TIMEOUT_MAX: u64 = 3000;
 
+const HEARTBEAT_TIMEOUT: u64 = 500;
+const ELECTION_TIMEOUT: u64 = 1000;
+
 pub struct TimeoutHandler {
     task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     cancel_tx: Arc<Mutex<Option<mpsc::Sender<()>>>>,
@@ -26,7 +29,15 @@ impl TimeoutHandler {
         }
     }
 
-    pub fn get_random_timeout(&self) -> Duration {
+    pub fn get_random_timeout() -> Duration {
+        Duration::from_millis(ELECTION_TIMEOUT)
+    }
+
+    pub fn get_heartbeat_timeout() -> Duration {
+        Duration::from_millis(HEARTBEAT_TIMEOUT)
+    }
+
+    pub fn get_election_timeout() -> Duration {
         Duration::from_millis(
             rand::thread_rng().gen_range(TIMEOUT_MIN..=TIMEOUT_MAX),
         )

@@ -4,10 +4,17 @@ pub enum Role {
     Leader = 2,
 }
 
+impl PartialEq for Role {
+    fn eq(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 pub struct State {
     pub role: Role,
     pub current_term: u64,
     pub voted_for: Option<String>,
+    pub votes_received: u32,
 }
 
 impl Default for State {
@@ -16,6 +23,7 @@ impl Default for State {
             role: Role::Follower,
             current_term: 0,
             voted_for: None,
+            votes_received: 0,
         }
     }
 }
@@ -26,14 +34,7 @@ impl State {
             role: Role::Follower,
             current_term: 0,
             voted_for: None,
+            votes_received: 0,
         }
-    }
-
-    pub fn update_term(&mut self, term: u64) {
-        self.current_term = term;
-    }
-
-    pub fn update_voted_for(&mut self, voted_for: Option<String>) {
-        self.voted_for = voted_for;
     }
 }

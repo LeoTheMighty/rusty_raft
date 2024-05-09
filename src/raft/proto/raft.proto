@@ -20,22 +20,22 @@ message RaftResponse {
 
 // The Heartbeat message to be sent by the leader
 message Heartbeat {
-  int64 term = 1;
+  uint64 term = 1;
   string leader_id = 2;
 }
 
 // The Ack response message to be sent by followers
 message Ack {
-  int64 term = 1;
+  uint64 term = 1;
   bool success = 2;
 }
 
 message RequestVote {
-  int64 term = 1;
+  uint64 term = 1;
   string candidate_id = 2;
 }
 
 message RequestVoteResponse {
-  int64 term = 1;
+  uint64 term = 1;
   bool vote_granted = 2;
 }

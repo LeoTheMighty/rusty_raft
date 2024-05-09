@@ -17,8 +17,8 @@ pub struct RaftResponse {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Heartbeat {
-    #[prost(int64, tag = "1")]
-    pub term: i64,
+    #[prost(uint64, tag = "1")]
+    pub term: u64,
     #[prost(string, tag = "2")]
     pub leader_id: ::prost::alloc::string::String,
 }
@@ -26,24 +26,24 @@ pub struct Heartbeat {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Ack {
-    #[prost(int64, tag = "1")]
-    pub term: i64,
+    #[prost(uint64, tag = "1")]
+    pub term: u64,
     #[prost(bool, tag = "2")]
     pub success: bool,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestVote {
-    #[prost(int64, tag = "1")]
-    pub term: i64,
+    #[prost(uint64, tag = "1")]
+    pub term: u64,
     #[prost(string, tag = "2")]
     pub candidate_id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestVoteResponse {
-    #[prost(int64, tag = "1")]
-    pub term: i64,
+    #[prost(uint64, tag = "1")]
+    pub term: u64,
     #[prost(bool, tag = "2")]
     pub vote_granted: bool,
 }
