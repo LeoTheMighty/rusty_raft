@@ -2,7 +2,6 @@ use tokio::sync::{Mutex, mpsc};
 use tokio::time::{self, Duration};
 use std::sync::Arc;
 use std::future::Future;
-use std::pin::Pin;
 use rand::Rng;
 
 const TIMEOUT_MIN: u64 = 1000;
@@ -28,7 +27,7 @@ impl TimeoutHandler {
     }
 
     pub async fn set_random_timeout<F>(&self, fut: F) where F: Future<Output = ()> + Send + 'static {
-        self.set_idle_timeout(
+        self.set_timeout(
             Duration::from_millis(
                 rand::thread_rng().gen_range(TIMEOUT_MIN..=TIMEOUT_MAX),
             ),

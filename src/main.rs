@@ -4,6 +4,8 @@ use std::env::args;
 use std::io;
 use raft::raft::RustyRaft;
 
+use std::sync::Arc;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = args().collect();
@@ -29,19 +31,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Vec::new()
     };
 
-    let raft_service: RustyRaft = RustyRaft::new(
+    let raft_service = Arc::new(RustyRaft::new(
         node_id,
         addr,
         clients_info
-    ).await;
+    ).await);
 
     raft_service.start_server().await;
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-    raft_service.send_heartbeats_to_clients().await?;
+    // raft_service.send_heartbeats_to_clients().await?;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
 
     raft_service.stop_server().await;
 
