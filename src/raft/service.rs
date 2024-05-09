@@ -74,7 +74,7 @@ impl RustyRaft {
             self.log(format!("Sending heartbeat to: {:?}", client));
             let request = Heartbeat { term: 0, leader_id: self.node_id.clone() };
             match client.send_heartbeat(request).await {
-                Ok(response) => self.log(format!("Received Ack Response: {:?}", response)),
+                Ok(response) => self.clone().handle_heartbeat_response(response).await,
                 Err(e) => eprintln!("Error sending heartbeat to {:?}: {}", client, e),
             }
         }
@@ -82,37 +82,41 @@ impl RustyRaft {
         Ok(())
     }
 
+    pub async fn handle_heartbeat_response(self: Arc<Self>, response: Ack) {
+        self.log(format!("Received Ack Response: {:?}", response));
+    }
+
     pub async fn send_request_votes_to_clients(self: Arc<Self>) -> Result<(), DynamicError> {
         for client in self.clients.iter() {
             self.log(format!("Sending request vote to: {:?}", client));
             let request = RequestVote { term: 0, candidate_id: self.node_id.clone() };
             match client.send_request_vote(request).await {
-                Ok(response) => {
-                    let mut state = self.state.lock().await;
-                    if state.role == Role::Follower {
-                        self.clone().set_election_timeout();
-
-                        if response.vote_granted {
-                            state.votes_received += 1;
-
-                            if state.votes_received > (self.clients.len() / 2) as u32 {
-                                state.role = Role::Leader;
-
-                                match self.clone().send_heartbeats_to_clients().await {
-                                    Ok(_) => (),
-                                    Err(e) => self.log(format!("Error sending heartbeats: {}", e)),
-                                }
-
-                                return Ok(());
-                            }
-                        }
-                    }
-                },
+                Ok(response) => self.clone().handle_request_vote_response(response).await,
                 Err(e) => eprintln!("Error sending request vote to {:?}: {}", client, e),
             }
         }
 
         Ok(())
+    }
+
+    pub async fn handle_request_vote_response(self: Arc<Self>, response: RequestVoteResponse) {
+        let mut state = self.state.lock().await;
+        if state.role == Role::Follower {
+            self.clone().set_election_timeout();
+
+            if response.vote_granted {
+                state.votes_received += 1;
+
+                if state.votes_received > (self.clients.len() / 2) as u32 {
+                    state.role = Role::Leader;
+
+                    match self.clone().send_heartbeats_to_clients().await {
+                        Ok(_) => (),
+                        Err(e) => self.log(format!("Error sending heartbeats: {}", e)),
+                    }
+                }
+            }
+        }
     }
 
     pub fn set_heartbeat_timeout(self: Arc<Self>) {
@@ -145,18 +149,19 @@ impl RustyRaft {
         });
     }
 
-    pub fn cancel_timeout(self: Arc<Self>) {
-        let timeout_handler = Arc::clone(&self.timeout_handler);
-        tokio::spawn(async move {
-            timeout_handler.cancel_timeout().await;
-        });
-    }
+    // pub fn cancel_timeout(self: Arc<Self>) {
+    //     let timeout_handler = Arc::clone(&self.timeout_handler);
+    //     tokio::spawn(async move {
+    //         timeout_handler.cancel_timeout().await;
+    //     });
+    // }
 
     pub async fn handle_timeout(self: Arc<Self>) {
         let mut state = self.state.lock().await;
 
         match state.role {
             Role::Follower | Role::Candidate => {
+                state.role = Role::Candidate;
                 state.votes_received = 1;
                 state.current_term += 1;
 
@@ -169,7 +174,7 @@ impl RustyRaft {
             }
             Role::Leader => {
                 match self.clone().send_heartbeats_to_clients().await {
-                    Ok(_) => (),
+                    Ok(_) => self.clone().set_heartbeat_timeout(),
                     Err(e) => self.log(format!("Error sending heartbeats: {}", e)),
                 }
             }

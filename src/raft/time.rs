@@ -43,9 +43,9 @@ impl TimeoutHandler {
         )
     }
 
-    pub async fn cancel_timeout(&self) {
-        self.cancel_tx.lock().await.take().unwrap().send(()).await.unwrap();
-    }
+    // pub async fn cancel_timeout(&self) {
+    //     self.cancel_tx.lock().await.take().unwrap().send(()).await.unwrap();
+    // }
 
     pub async fn set_timeout<F>(&self, duration: Duration, fut: F)
         where
