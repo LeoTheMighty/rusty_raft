@@ -5,7 +5,6 @@ use std::io;
 use raft::rusty_raft::RustyRaft;
 
 use std::sync::Arc;
-use crate::raft::time::TimeoutHandler;
 
 use crate::raft::types::DynamicError;
 
@@ -46,6 +45,7 @@ async fn main() -> Result<(), DynamicError> {
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     raft_service.clone().reset_idle_timeout();
+
 
     tokio::signal::ctrl_c().await?;
 
