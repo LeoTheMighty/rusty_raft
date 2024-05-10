@@ -4,7 +4,7 @@ use tokio::sync::watch;
 use tokio::task;
 use tonic::transport::Server;
 use crate::raft::protobufs::raft_service_server::RaftServiceServer;
-use crate::raft::raft::RustyRaft;
+use crate::raft::rusty_raft::RustyRaft;
 
 impl RustyRaft {
     async fn run_server(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {

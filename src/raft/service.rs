@@ -3,7 +3,7 @@ use tonic::{Request, Response, Status};
 use tokio::task;
 
 use crate::raft::client::Client;
-use crate::raft::raft::RustyRaft;
+use crate::raft::rusty_raft::RustyRaft;
 use crate::raft::protobufs::{Ack, Heartbeat, RaftMessage, RaftResponse, RequestVote, RequestVoteResponse};
 use crate::raft::protobufs::raft_service_server::RaftService;
 use crate::raft::time::TimeoutHandler;
@@ -221,7 +221,8 @@ impl RustyRaft {
     }
 
     pub async fn set_leader_role(self: Arc<Self>) {
-        if let mut state = self.state.lock().await {
+        {
+            let mut state = self.state.lock().await;
             if state.role != Role::Leader {
                 state.role = Role::Leader;
 
@@ -238,7 +239,8 @@ impl RustyRaft {
     }
 
     pub async fn set_candidate_role(self: Arc<Self>) {
-        if let mut state = self.state.lock().await {
+        {
+            let mut state = self.state.lock().await;
             if state.role != Role::Candidate {
                 self.log("Starting Election in Candidate Role".to_string());
 
@@ -261,7 +263,8 @@ impl RustyRaft {
     pub async fn set_follower_role(self: Arc<Self>) {
         self.log("Starting Follower Role".to_string());
 
-        if let mut state = self.state.lock().await {
+        {
+            let mut state = self.state.lock().await;
             state.role = Role::Follower;
             state.voted_for = None;
         }

@@ -2,7 +2,7 @@ mod raft;
 
 use std::env::args;
 use std::io;
-use raft::raft::RustyRaft;
+use raft::rusty_raft::RustyRaft;
 
 use std::sync::Arc;
 use crate::raft::time::TimeoutHandler;
@@ -43,13 +43,7 @@ async fn main() -> Result<(), DynamicError> {
     raft_service.clone().start_server().await;
 
     // Wait for other servers to start
-    tokio::time::sleep(tokio::time::Duration::from_secs(
-        5
-    )).await;
-
-    tokio::time::sleep(TimeoutHandler::get_random_timeout()).await;
-    tokio::time::sleep(TimeoutHandler::get_random_timeout()).await;
-    tokio::time::sleep(TimeoutHandler::get_random_timeout()).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     raft_service.clone().reset_idle_timeout();
 

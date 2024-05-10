@@ -42,17 +42,17 @@ impl RustyRaft {
     pub fn log(&self, message: String) {
         let node_id = self.node_id.clone();
         let color = *self.color;
-        println!("{}", format!("[Node {}]: {}", node_id, message).color(color).bold());
-        // let state = Arc::clone(&self.state);
-        // tokio::spawn(async move {
-        //     let (role, term) = {
-        //         let state = state.lock().await;
-        //
-        //         (state.role.clone(), state.current_term)
-        //     };
-        //
-        //     println!("{}", format!("[Node {} ({:?} term {})]: {}", node_id, role, term, message).color(color).bold());
-        // });
+        // println!("{}", format!("[Node {}]: {}", node_id, message).color(color).bold());
+        let state = Arc::clone(&self.state);
+        tokio::spawn(async move {
+            let (role, term) = {
+                let state = state.lock().await;
+
+                (state.role.clone(), state.current_term)
+            };
+
+            println!("{}", format!("[Node {} ({:?} term {})]: {}", node_id, role, term, message).color(color).bold());
+        });
     }
 }
 
@@ -61,7 +61,7 @@ impl Clone for RustyRaft {
     fn clone(&self) -> Self {
         RustyRaft {
             node_id: self.node_id.clone(),
-            color: RandomColor((*self.color).clone()),
+            color: RandomColor(*self.color),
             server_address: self.server_address.clone(),
             clients: self.clients.clone(),
             state: Arc::clone(&self.state),
