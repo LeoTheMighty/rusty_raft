@@ -29,7 +29,7 @@ impl TimeoutHandler {
         }
     }
 
-    pub fn get_random_timeout() -> Duration {
+    pub fn get_election_timeout() -> Duration {
         Duration::from_millis(ELECTION_TIMEOUT)
     }
 
@@ -37,7 +37,7 @@ impl TimeoutHandler {
         Duration::from_millis(HEARTBEAT_TIMEOUT)
     }
 
-    pub fn get_election_timeout() -> Duration {
+    pub fn get_random_timeout() -> Duration {
         Duration::from_millis(
             rand::thread_rng().gen_range(TIMEOUT_MIN..=TIMEOUT_MAX),
         )

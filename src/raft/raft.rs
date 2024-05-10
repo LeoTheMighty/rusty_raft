@@ -40,7 +40,19 @@ impl RustyRaft {
     }
 
     pub fn log(&self, message: String) {
-        println!("{}", format!("[Node: {}]: {}", self.node_id, message).color(*self.color).bold());
+        let node_id = self.node_id.clone();
+        let color = *self.color;
+        println!("{}", format!("[Node {}]: {}", node_id, message).color(color).bold());
+        // let state = Arc::clone(&self.state);
+        // tokio::spawn(async move {
+        //     let (role, term) = {
+        //         let state = state.lock().await;
+        //
+        //         (state.role.clone(), state.current_term)
+        //     };
+        //
+        //     println!("{}", format!("[Node {} ({:?} term {})]: {}", node_id, role, term, message).color(color).bold());
+        // });
     }
 }
 

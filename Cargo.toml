@@ -29,5 +29,13 @@ name = "run_one_client"
 path = "simulations/run_one_client.rs"
 
 [[bin]]
+name = "run_two_clients"
+path = "simulations/run_two_clients.rs"
+
+[[bin]]
+name = "run_three_clients"
+path = "simulations/run_three_clients.rs"
+
+[[bin]]
 name = "run_five_clients"
 path = "simulations/run_five_clients.rs"

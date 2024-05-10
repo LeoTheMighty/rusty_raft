@@ -5,6 +5,16 @@ pub enum Role {
     Leader = 2,
 }
 
+impl std::fmt::Debug for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Role::Follower =>  write!(f, "FOLLOWER "),
+            Role::Candidate => write!(f, "CANDIDATE"),
+            Role::Leader =>    write!(f, "LEADER   "),
+        }
+    }
+}
+
 pub struct State {
     pub role: Role,
     pub current_term: u64,

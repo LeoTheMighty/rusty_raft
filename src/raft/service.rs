@@ -30,13 +30,26 @@ impl RaftService for Arc<RustyRaft> {
 
         self.log(format!("Received heartbeat: {:?}", heartbeat));
 
-        let state = self.state.lock().await;
-        if state.current_term < heartbeat.term {
+        let (mut current_term, role) = {
+            let state = self.state.lock().await;
+
+            (state.current_term, state.role.clone())
+        };
+
+        if role == Role::Candidate || current_term < heartbeat.term {
+            {
+                let mut state = self.state.lock().await;
+                state.current_term = heartbeat.term;
+                current_term = heartbeat.term;
+            }
+
             self.clone().set_follower_role().await;
         }
 
+        self.clone().reset_idle_timeout();
+
         Ok(Response::new(Ack {
-            term: state.current_term,
+            term: current_term,
             success: true,
         }))
     }
@@ -54,10 +67,8 @@ impl RaftService for Arc<RustyRaft> {
                 state.voted_for = Some(request_vote.candidate_id);
 
                 true
-            } else if state.voted_for == Some(request_vote.candidate_id) {
-                true
             } else {
-                false
+                state.voted_for == Some(request_vote.candidate_id)
             }
         } else {
             false
@@ -94,9 +105,14 @@ impl RustyRaft {
     }
 
     pub async fn send_heartbeats_to_clients(self: Arc<Self>) -> Result<(), DynamicError> {
+        self.log("Sending heartbeats to all clients".to_string());
+
         match self.run_for_all_clients(|self_clone, client| async move {
             self_clone.log(format!("Sending heartbeat to: {:?}", client));
-            let request = Heartbeat { term: 0, leader_id: self_clone.node_id.clone() };
+            let term = {
+                self_clone.state.lock().await.current_term
+            };
+            let request = Heartbeat { term, leader_id: self_clone.node_id.clone() };
             match client.send_heartbeat(request).await {
                 Ok(response) => self_clone.handle_heartbeat_response(response).await,
                 Err(e) => eprintln!("Error sending heartbeat to {:?}: {}", client, e),
@@ -114,6 +130,8 @@ impl RustyRaft {
     }
 
     pub async fn send_request_votes_to_clients(self: Arc<Self>) -> Result<(), DynamicError> {
+        self.log("Sending request votes to all clients".to_string());
+
         match self.run_for_all_clients(|self_clone, client| async move {
             self_clone.log(format!("Sending request vote to: {:?}", client));
             let term = self_clone.state.lock().await.current_term;
@@ -131,14 +149,26 @@ impl RustyRaft {
     }
 
     pub async fn handle_request_vote_response(self: Arc<Self>, response: RequestVoteResponse) {
-        let mut state = self.state.lock().await;
-        if state.role == Role::Follower {
+        self.log(format!("Received Request Vote Response: {:?}", response));
+
+        let role = {
+            let state = self.state.lock().await;
+
+            state.role.clone()
+        };
+
+        if role == Role::Candidate {
             self.clone().set_election_timeout();
 
             if response.vote_granted {
-                state.votes_received += 1;
+                let votes_received = {
+                    let mut state = self.state.lock().await;
+                    state.votes_received += 1;
 
-                if state.votes_received > (self.clients.len() / 2) as u32 {
+                    state.votes_received
+                };
+
+                if votes_received > (self.clients.len() / 2) as u32 {
                     self.clone().set_leader_role().await;
                 }
             }
@@ -178,13 +208,6 @@ impl RustyRaft {
         });
     }
 
-    // pub fn cancel_timeout(self: Arc<Self>) {
-    //     let timeout_handler = Arc::clone(&self.timeout_handler);
-    //     tokio::spawn(async move {
-    //         timeout_handler.cancel_timeout().await;
-    //     });
-    // }
-
     pub async fn handle_timeout(self: Arc<Self>) {
         let role = self.state.lock().await.role.clone();
         match role {
@@ -198,10 +221,12 @@ impl RustyRaft {
     }
 
     pub async fn set_leader_role(self: Arc<Self>) {
-        self.log("Starting Leader Role".to_string());
-
         if let mut state = self.state.lock().await {
-            state.role = Role::Leader;
+            if state.role != Role::Leader {
+                state.role = Role::Leader;
+
+                self.log("Starting Leader Role".to_string());
+            }
         }
 
         self.clone().set_heartbeat_timeout();
@@ -213,12 +238,16 @@ impl RustyRaft {
     }
 
     pub async fn set_candidate_role(self: Arc<Self>) {
-        self.log("Starting Candidate Role".to_string());
-
         if let mut state = self.state.lock().await {
-            state.role = Role::Candidate;
+            if state.role != Role::Candidate {
+                self.log("Starting Election in Candidate Role".to_string());
+
+                state.role = Role::Candidate;
+            }
+
             state.votes_received = 1;
             state.current_term += 1;
+            state.voted_for = Some(self.node_id.clone());
         }
 
         self.clone().set_election_timeout();
@@ -235,9 +264,6 @@ impl RustyRaft {
         if let mut state = self.state.lock().await {
             state.role = Role::Follower;
             state.voted_for = None;
-            state.current_term += 1;
         }
-
-        self.clone().reset_idle_timeout();
     }
 }
