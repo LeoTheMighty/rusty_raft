@@ -33,6 +33,52 @@ pub struct Ack {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LogEntry {
+    #[prost(uint64, tag = "1")]
+    pub index: u64,
+    #[prost(uint64, tag = "2")]
+    pub term: u64,
+    #[prost(string, tag = "3")]
+    pub data: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AppendEntries {
+    #[prost(uint64, tag = "1")]
+    pub term: u64,
+    #[prost(string, tag = "2")]
+    pub leader_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub prev_log_index: u64,
+    #[prost(uint64, tag = "4")]
+    pub prev_log_term: u64,
+    #[prost(message, repeated, tag = "5")]
+    pub entries: ::prost::alloc::vec::Vec<LogEntry>,
+    #[prost(uint64, tag = "6")]
+    pub leader_commit: u64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AppendEntriesResponse {
+    #[prost(uint64, tag = "1")]
+    pub term: u64,
+    #[prost(bool, tag = "2")]
+    pub success: bool,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Redirect {
+    #[prost(string, tag = "1")]
+    pub data: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RedirectResponse {
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RequestVote {
     #[prost(uint64, tag = "1")]
     pub term: u64,
@@ -201,6 +247,56 @@ pub mod raft_service_client {
                 .insert(GrpcMethod::new("raft.RaftService", "ProcessRequestVote"));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn process_append_entries(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AppendEntries>,
+        ) -> std::result::Result<
+            tonic::Response<super::AppendEntriesResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/raft.RaftService/ProcessAppendEntries",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("raft.RaftService", "ProcessAppendEntries"));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn process_redirect(
+            &mut self,
+            request: impl tonic::IntoRequest<super::Redirect>,
+        ) -> std::result::Result<
+            tonic::Response<super::RedirectResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/raft.RaftService/ProcessRedirect",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("raft.RaftService", "ProcessRedirect"));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -223,6 +319,20 @@ pub mod raft_service_server {
             request: tonic::Request<super::RequestVote>,
         ) -> std::result::Result<
             tonic::Response<super::RequestVoteResponse>,
+            tonic::Status,
+        >;
+        async fn process_append_entries(
+            &self,
+            request: tonic::Request<super::AppendEntries>,
+        ) -> std::result::Result<
+            tonic::Response<super::AppendEntriesResponse>,
+            tonic::Status,
+        >;
+        async fn process_redirect(
+            &self,
+            request: tonic::Request<super::Redirect>,
+        ) -> std::result::Result<
+            tonic::Response<super::RedirectResponse>,
             tonic::Status,
         >;
     }
@@ -424,6 +534,97 @@ pub mod raft_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = ProcessRequestVoteSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/raft.RaftService/ProcessAppendEntries" => {
+                    #[allow(non_camel_case_types)]
+                    struct ProcessAppendEntriesSvc<T: RaftService>(pub Arc<T>);
+                    impl<
+                        T: RaftService,
+                    > tonic::server::UnaryService<super::AppendEntries>
+                    for ProcessAppendEntriesSvc<T> {
+                        type Response = super::AppendEntriesResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AppendEntries>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RaftService>::process_append_entries(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ProcessAppendEntriesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/raft.RaftService/ProcessRedirect" => {
+                    #[allow(non_camel_case_types)]
+                    struct ProcessRedirectSvc<T: RaftService>(pub Arc<T>);
+                    impl<T: RaftService> tonic::server::UnaryService<super::Redirect>
+                    for ProcessRedirectSvc<T> {
+                        type Response = super::RedirectResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::Redirect>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RaftService>::process_redirect(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ProcessRedirectSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

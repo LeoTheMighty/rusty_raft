@@ -5,6 +5,7 @@ use crate::raft::client::Client;
 use crate::raft::color::{pick_random_color, RandomColor};
 use crate::raft::time::TimeoutHandler;
 use crate::raft::state::State;
+use crate::raft::log::Log;
 
 #[derive(Default)]
 pub struct RustyRaft {
@@ -16,6 +17,7 @@ pub struct RustyRaft {
 
     // Mutable State
     pub state: Arc<Mutex<State>>,
+    pub log: Arc<Mutex<Log>>,
 
     pub shutdown_tx: Arc<Mutex<Option<watch::Sender<()>>>>,
     pub timeout_handler: Arc<TimeoutHandler>,
@@ -34,6 +36,7 @@ impl RustyRaft {
             server_address,
             clients,
             state: Arc::new(Mutex::new(State::new())),
+            log: Arc::new(Mutex::new(Log::new())),
             shutdown_tx: Arc::new(Mutex::new(None)),
             timeout_handler: Arc::new(TimeoutHandler::new()),
         }
@@ -44,14 +47,19 @@ impl RustyRaft {
         let color = *self.color;
         // println!("{}", format!("[Node {}]: {}", node_id, message).color(color).bold());
         let state = Arc::clone(&self.state);
+        let log = Arc::clone(&self.log);
         tokio::spawn(async move {
-            let (role, term) = {
+            let (role, term, log)  = {
                 let state = state.lock().await;
 
-                (state.role.clone(), state.current_term)
+                (state.role.clone(), state.current_term, log)
             };
 
-            println!("{}", format!("[Node {} ({:?} term {})]: {}", node_id, role, term, message).color(color).bold());
+            let log = {
+                format!("{:?}", log.lock().await)
+            };
+
+            println!("{}", format!("[Node {} ({:?} term {} Log[{}])]: {}", node_id, role, term, log, message).color(color).bold());
         });
     }
 }
@@ -65,6 +73,7 @@ impl Clone for RustyRaft {
             server_address: self.server_address.clone(),
             clients: self.clients.clone(),
             state: Arc::clone(&self.state),
+            log: Arc::clone(&self.log),
             shutdown_tx: Arc::clone(&self.shutdown_tx),
             timeout_handler: Arc::clone(&self.timeout_handler),
         }

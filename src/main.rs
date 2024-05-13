@@ -1,10 +1,11 @@
 mod raft;
 
 use std::env::args;
-use std::io;
 use raft::rusty_raft::RustyRaft;
 
 use std::sync::Arc;
+
+use tokio::io::{self, AsyncBufReadExt, BufReader};
 
 use crate::raft::types::DynamicError;
 
@@ -46,6 +47,20 @@ async fn main() -> Result<(), DynamicError> {
 
     raft_service.clone().reset_idle_timeout();
 
+    // Spawn a task to listen for STDIN input and process commands
+    let raft_service_clone = Arc::clone(&raft_service);
+    tokio::spawn(async move {
+        let stdin = io::stdin();
+        let mut reader = BufReader::new(stdin).lines();
+
+        while let Some(line) = reader.next_line().await.unwrap() {
+            let trimmed_line = line.trim();
+            match raft_service_clone.clone().handle_request(trimmed_line.to_string()).await {
+                Ok(_) => {}
+                Err(e) => eprintln!("Error: {}", e),
+            }
+        }
+    });
 
     tokio::signal::ctrl_c().await?;
 

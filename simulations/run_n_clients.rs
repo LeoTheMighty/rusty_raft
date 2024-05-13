@@ -1,5 +1,5 @@
 use tokio::process::{Command, Child};
-use tokio::io::{self, AsyncBufReadExt};
+use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use std::process::Stdio;
@@ -70,6 +70,89 @@ async fn restart_node(
     println!("Node {} restarted.", node_id);
 }
 
+/**
+ * This processes all the commands that the user can enter for nodes.
+ *
+ * Format: <"command"><"node_id"> (e.g. "a1" or "r3")
+ *
+ * Commands:
+ * r: restart node
+ * a: pass AppendEntries input to the node
+ */
+async fn process_commands(
+    binary_path: PathBuf,
+    children_arc: Arc<Mutex<Vec<JoinHandle<Child>>>>,
+    num_clients: u32,
+    start_port: u32,
+) {
+    let stdin = io::stdin();
+    let mut reader = io::BufReader::new(stdin).lines();
+
+    while let Some(line) = reader.next_line().await.unwrap() {
+        let trimmed_line = line.trim();
+
+        if trimmed_line.len() < 2 {
+            println!("Invalid command. Please enter a valid command.");
+            continue;
+        }
+
+        let command = &trimmed_line[0..1];
+        let parameter = &trimmed_line[1..];
+
+        match command {
+            "r" => {
+                if let Ok(node_id) = parameter.parse::<u32>() {
+                    if node_id >= 1 && node_id <= num_clients {
+                        let address = format!("[::1]:{}", start_port + node_id);
+                        // Create the client addresses vector, skipping the current node's address
+                        let client_addresses: Vec<String> = (1..=num_clients)
+                            .filter(|&client_id| client_id != node_id)
+                            .map(|client_id| format!("[::1]:{}|{}", start_port + client_id, client_id))
+                            .collect();
+                        restart_node(
+                            binary_path.clone(),
+                            node_id,
+                            address,
+                            client_addresses,
+                            Arc::clone(&children_arc),
+                        )
+                            .await;
+                    } else {
+                        println!("Invalid node ID: {}", node_id);
+                    }
+                } else {
+                    println!("Invalid input. Please enter a valid node ID.");
+                }
+            }
+            "a" => {
+                // Handle the "a" command to pass input to STDIN of the node
+                if let Ok(node_id) = parameter.parse::<u32>() {
+                    if node_id >= 1 && node_id <= num_clients {
+                        // Example of passing input to STDIN of the node
+                        if let Some(child) = children_arc.lock().await.get_mut((node_id - 1) as usize) {
+                            if let Some(stdin) = child.await.unwrap().stdin.as_mut() {
+                                let input = format!("Input for node {}\n", node_id);
+                                stdin.write_all(input.as_bytes()).await.unwrap();
+                            } else {
+                                println!("Failed to access stdin of node {}", node_id);
+                            }
+                        } else {
+                            println!("Invalid node ID: {}", node_id);
+                        }
+                    } else {
+                        println!("Invalid node ID: {}", node_id);
+                    }
+                } else {
+                    println!("Invalid input. Please enter a valid node ID.");
+                }
+            }
+            _ => {
+                println!("Unknown command. Please enter a valid command.");
+            }
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args = args().collect::<Vec<String>>();
@@ -108,42 +191,9 @@ async fn main() {
         *children_guard = children;
     }
 
-
-    // Listen for keystrokes
     let children_clone = Arc::clone(&children_arc);
-    let binary_path_clone = binary_path.clone();
     tokio::spawn(async move {
-        let stdin = io::stdin();
-        let mut reader = io::BufReader::new(stdin).lines();
-
-        while let Some(line) = reader.next_line().await.unwrap() {
-            if line.trim() == "r" {
-                println!("Which node to restart?");
-                if let Some(node_id_str) = reader.next_line().await.unwrap() {
-                    if let Ok(node_id) = node_id_str.trim().parse::<u32>() {
-                        if node_id >= 1 && node_id <= num_clients {
-                            let address = format!("[::1]:{}", start_port + node_id);
-                            // Create the client addresses vector, skipping the current node's address
-                            let client_addresses: Vec<String> = (1..=num_clients)
-                                .filter(|&client_id| client_id != node_id)
-                                .map(|client_id| format!("[::1]:{}|{}", start_port + client_id, client_id))
-                                .collect();
-                            restart_node(
-                                binary_path_clone.clone(),
-                                node_id,
-                                address,
-                                client_addresses,
-                                Arc::clone(&children_clone)
-                            ).await;
-                        } else {
-                            println!("Invalid node ID: {}", node_id);
-                        }
-                    } else {
-                        println!("Invalid input. Please enter a valid node ID.");
-                    }
-                }
-            }
-        }
+        process_commands(binary_path.clone(), children_clone, num_clients, start_port).await;
     });
 
     // Run for some time
