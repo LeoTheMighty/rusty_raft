@@ -91,7 +91,7 @@ impl Debug for Log {
             "{}",
             self.entries.iter().map(|e| e.message.clone()).reduce(|acc, s| {
                 format!("{}{}", acc, s)
-            }).unwrap()
+            }).unwrap_or(String::new())
         )
     }
 }

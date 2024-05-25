@@ -8,6 +8,7 @@ service RaftService {
   rpc ProcessRequestVote(RequestVote) returns (RequestVoteResponse);
   rpc ProcessAppendEntries(AppendEntries) returns (AppendEntriesResponse);
   rpc ProcessRedirect(Redirect) returns (RedirectResponse);
+  rpc ProcessClientRequest(ClientRequest) returns (ClientResponse);
 }
 
 // The request message containing the data
@@ -52,6 +53,14 @@ message AppendEntriesResponse {
   bool success = 2;
 }
 
+message ClientRequest {
+  string data = 1;
+}
+
+message ClientResponse {
+  bool success = 1;
+}
+
 message Redirect {
   string data = 1;
 }
@@ -60,6 +69,7 @@ message RedirectResponse {
   bool success = 1;
 }
 
+// Leadership Election
 message RequestVote {
   uint64 term = 1;
   string candidate_id = 2;

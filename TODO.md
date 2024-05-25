@@ -13,6 +13,12 @@ Here's ChatGPT's recommended project breakdown:
 - [x] Step 2: Tokio and Async Setup
 - [x] Step 3: Protobuf and gRPC Integration
 - [ ] Step 4: Basic RAFT Protocol Impl
+- [ ] Step 5: Bazel Integration
+- [ ] Step 6: Optimizations with Streaming
+- [ ] Step 7: Remote Building and Execution with NativeLink
+- [ ] Step 8: Kubernetes Cluster configuration
+- [ ] Step 9: Documentation with Rust and TLA+ spec
+- [ ] Step 10: Testing Suite
 - ...
 
 ## Step 1: Project Setup and Environment Configuration

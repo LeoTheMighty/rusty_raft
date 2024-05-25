@@ -1,7 +1,7 @@
 use tonic::Request;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::raft::protobufs::{Ack, AppendEntries, AppendEntriesResponse, Heartbeat, Redirect, RedirectResponse, RequestVote, RequestVoteResponse};
+use crate::raft::protobufs::{Ack, AppendEntries, AppendEntriesResponse, ClientRequest, ClientResponse, Heartbeat, Redirect, RedirectResponse, RequestVote, RequestVoteResponse};
 use crate::raft::protobufs::raft_service_client::RaftServiceClient;
 use crate::raft::types::DynamicError;
 
@@ -102,6 +102,19 @@ impl Client {
         }
     }
 
+    pub async fn send_client_message(&self, message: String) -> Result<ClientResponse, DynamicError> {
+        let url = self.url.clone();
+        match RaftServiceClient::connect(url.clone()).await {
+            Ok(mut client) => {
+                match client.process_client_request(ClientRequest { data: message }).await {
+                    Ok(response) => Ok(response.into_inner()),
+                    Err(e) => Err(Box::new(e) as DynamicError),
+                }
+            }
+            Err(e) => Err(Box::new(e) as DynamicError),
+        }
+    }
+
     pub async fn send_redirect(&self, message: String) -> Result<RedirectResponse, DynamicError> {
         let url = self.url.clone();
         match RaftServiceClient::connect(url.clone()).await {
@@ -114,4 +127,5 @@ impl Client {
             Err(e) => Err(Box::new(e) as DynamicError),
         }
     }
+
 }

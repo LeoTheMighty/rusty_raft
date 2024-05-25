@@ -1,5 +1,5 @@
 use tokio::process::{Command, Child};
-use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt};
+use tokio::io::{self, AsyncBufReadExt};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use std::process::Stdio;
@@ -18,20 +18,28 @@ async fn build_project() {
         .await
         .expect("failed to build project");
 
-    if !output.status.success() {
-        panic!("cargo build failed");
-    }
+    assert! (output.status.success(), "cargo build failed");
 }
 
 async fn start_node(binary_path: PathBuf, node_id: u32, address: String, client_addresses: Vec<String>) -> Child {
     Command::new(binary_path)
-        .args([&node_id.to_string(), &address, &client_addresses.join(",")])
+        .args(["run", &node_id.to_string(), &address, &client_addresses.join(",")])
         .env("RUST_LOG", "info")
         .env("RUSTFLAGS", "-A warnings")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()
         .expect("failed to start node process")
+}
+
+async fn send_message(binary_path: PathBuf, node_id: u32, message: String) {
+    let output = Command::new(binary_path)
+        .args(["run", "msg", &node_id.to_string(), &message])
+        .output()
+        .await
+        .expect("failed to send message");
+
+    println!("Message sent to node {node_id}, response: {:?}", output);
 }
 
 async fn restart_node(
@@ -67,7 +75,7 @@ async fn restart_node(
         children_guard[node_id as usize - 1] = new_handle;
     }
 
-    println!("Node {} restarted.", node_id);
+    println!("Node {node_id} restarted.");
 }
 
 /**
@@ -104,7 +112,6 @@ async fn process_commands(
                 if let Ok(node_id) = parameter.parse::<u32>() {
                     if node_id >= 1 && node_id <= num_clients {
                         let address = format!("[::1]:{}", start_port + node_id);
-                        // Create the client addresses vector, skipping the current node's address
                         let client_addresses: Vec<String> = (1..=num_clients)
                             .filter(|&client_id| client_id != node_id)
                             .map(|client_id| format!("[::1]:{}|{}", start_port + client_id, client_id))
@@ -118,29 +125,19 @@ async fn process_commands(
                         )
                             .await;
                     } else {
-                        println!("Invalid node ID: {}", node_id);
+                        println!("Invalid node ID: {node_id}");
                     }
                 } else {
                     println!("Invalid input. Please enter a valid node ID.");
                 }
             }
             "a" => {
-                // Handle the "a" command to pass input to STDIN of the node
                 if let Ok(node_id) = parameter.parse::<u32>() {
                     if node_id >= 1 && node_id <= num_clients {
-                        // Example of passing input to STDIN of the node
-                        if let Some(child) = children_arc.lock().await.get_mut((node_id - 1) as usize) {
-                            if let Some(stdin) = child.await.unwrap().stdin.as_mut() {
-                                let input = format!("Input for node {}\n", node_id);
-                                stdin.write_all(input.as_bytes()).await.unwrap();
-                            } else {
-                                println!("Failed to access stdin of node {}", node_id);
-                            }
-                        } else {
-                            println!("Invalid node ID: {}", node_id);
-                        }
+                        let message = "Custom message to send"; // Customize this message as needed
+                        send_message(binary_path.clone(), node_id, message.to_string()).await;
                     } else {
-                        println!("Invalid node ID: {}", node_id);
+                        println!("Invalid node ID: {node_id}");
                     }
                 } else {
                     println!("Invalid input. Please enter a valid node ID.");
@@ -174,7 +171,7 @@ async fn main() {
         // Create the client addresses vector, skipping the current node's address
         let client_addresses: Vec<String> = (1..=num_clients)
             .filter(|&client_id| client_id != id)
-            .map(|client_id| format!("[::1]:{}|{}", start_port + client_id, client_id))
+            .map(|client_id| format!("[::1]:{}|{client_id}", start_port + client_id))
             .collect();
         let child = tokio::task::spawn(start_node(
             binary_path.clone(),

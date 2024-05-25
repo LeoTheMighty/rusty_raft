@@ -5,7 +5,7 @@ use tokio::task;
 use crate::raft::client::Client;
 use crate::raft::log::Entry;
 use crate::raft::rusty_raft::RustyRaft;
-use crate::raft::protobufs::{Ack, AppendEntries, AppendEntriesResponse, Heartbeat, RaftMessage, RaftResponse, Redirect, RedirectResponse, RequestVote, RequestVoteResponse};
+use crate::raft::protobufs::{Ack, AppendEntries, AppendEntriesResponse, ClientRequest, ClientResponse, Heartbeat, RaftMessage, RaftResponse, Redirect, RedirectResponse, RequestVote, RequestVoteResponse};
 use crate::raft::protobufs::raft_service_server::RaftService;
 use crate::raft::time::TimeoutHandler;
 use crate::raft::state::Role;
@@ -75,15 +75,17 @@ impl RaftService for Arc<RustyRaft> {
             }));
         }
 
-        let prev_entry_term = {
-            self.log.lock().await.entries[append_entries.prev_log_index as usize].term
-        };
+        if append_entries.prev_log_term != 0 {
+            let prev_entry_term = {
+                self.log.lock().await.entries[append_entries.prev_log_index as usize].term
+            };
 
-        if prev_entry_term != append_entries.prev_log_term {
-            return Ok(Response::new(AppendEntriesResponse {
-                term: current_term,
-                success: false,
-            }));
+            if prev_entry_term != append_entries.prev_log_term {
+                return Ok(Response::new(AppendEntriesResponse {
+                    term: current_term,
+                    success: false,
+                }));
+            }
         }
 
         if role == Role::Candidate || current_term < append_entries.term {
@@ -107,6 +109,41 @@ impl RaftService for Arc<RustyRaft> {
         }))
     }
 
+    async fn process_client_request(&self, request: Request<ClientRequest>) -> Result<Response<ClientResponse>, Status> {
+        let client_request = request.into_inner();
+        self.log(format!("Received client request: {:?}", client_request));
+
+        let role = {
+            self.state.lock().await.role.clone()
+        };
+
+        if role == Role::Leader {
+            // Add entry to log, update state, and send append entries to all followers
+            {
+                let mut log = self.log.lock().await;
+                let state = self.state.lock().await;
+
+                log.append_entry(Entry {
+                    term: state.current_term,
+                    message: client_request.data,
+                });
+            }
+
+            match self.clone().send_append_entries_to_all_clients().await {
+                Ok(_) => (),
+                Err(e) => eprintln!("Error sending append entries to all clients: {}", e),
+            }
+        } else {
+            // Redirect request to all clients
+            match self.clone().send_redirect_to_all_clients(client_request.data).await {
+                Ok(_) => (),
+                Err(e) => eprintln!("Error sending redirect to all clients: {}", e),
+            }
+        }
+
+        Ok(Response::new(ClientResponse { success: true }))
+    }
+
     async fn process_redirect(&self, request: Request<Redirect>) -> Result<Response<RedirectResponse>, Status> {
         let redirect = request.into_inner();
 
@@ -119,7 +156,7 @@ impl RaftService for Arc<RustyRaft> {
         if role == Role::Leader {
             let self_clone = self.clone();
             tokio::spawn(async move {
-                match self_clone.handle_request(redirect.data).await {
+                match self_clone.process_client_request(Request::new(ClientRequest { data: redirect.data })).await {
                     Ok(_) => (),
                     Err(err) => eprintln!("Error handling redirect: {}", err),
                 }
@@ -161,37 +198,6 @@ impl RaftService for Arc<RustyRaft> {
 }
 
 impl RustyRaft {
-    pub async fn handle_request(self: Arc<Self>, message: String) -> Result<(), DynamicError> {
-        self.log(format!("Received Client Message: {}", message));
-
-        let role = {
-            self.state.lock().await.role.clone()
-        };
-
-        if role == Role::Leader {
-            // Add entry to log, update state, and send append entries to all followers
-            {
-                let mut log = self.log.lock().await;
-                let state = self.state.lock().await;
-
-                log.append_entry(Entry { term: state.current_term, message });
-            }
-
-            match self.clone().send_append_entries_to_all_clients().await {
-                Ok(_) => (),
-                Err(e) => eprintln!("Error sending append entries to all clients: {}", e),
-            }
-        } else {
-            // Redirect request to all clients
-            match self.clone().send_redirect_to_all_clients(message).await {
-                Ok(_) => (),
-                Err(e) => eprintln!("Error sending redirect to all clients: {}", e),
-            }
-        }
-
-        Ok(())
-    }
-
     async fn run_for_all_clients<F, Fut>(self: Arc<Self>, f: F) -> Result<(), DynamicError>
         where
             F: Fn(Arc<Self>, Client) -> Fut + Send + Sync + 'static,
@@ -247,8 +253,14 @@ impl RustyRaft {
                 let client_state = client.state.lock().await;
                 let log = self_clone.log.lock().await;
 
-                let prev_log_index = client_state.next_index - 1;
-                let prev_log_term = log.entries[prev_log_index as usize].term;
+                let (prev_log_index, prev_log_term) = {
+                    if client_state.next_index == 0 {
+                        (0, 0)
+                    } else {
+                        (client_state.next_index - 1, log.entries[client_state.next_index as usize - 1].term)
+                    }
+                };
+
                 let entries = log.get_log_entries(client_state.next_index);
 
                 AppendEntries {
