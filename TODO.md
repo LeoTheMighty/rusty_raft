@@ -4,15 +4,11 @@ I want to break this project down into steps and perform each step individually.
 
 Here's ChatGPT's recommended project breakdown:
 
-### Questions:
-- [ ] Should the `main.rs` run a single node, or simulate running multiple?
-- [ ] What should the discovery protocol look like?
-
 ### Progress:
 - [x] Step 1: Project Setup
 - [x] Step 2: Tokio and Async Setup
 - [x] Step 3: Protobuf and gRPC Integration
-- [ ] Step 4: Basic RAFT Protocol Impl
+- [x] Step 4: Basic RAFT Protocol Impl
 - [ ] Step 5: Bazel Integration
 - [ ] Step 6: Optimizations with Streaming
 - [ ] Step 7: Remote Building and Execution with NativeLink
