@@ -13,7 +13,7 @@ use crate::raft::types::DynamicError;
 #[tokio::main]
 async fn main() -> Result<(), DynamicError> {
     let args: Vec<String> = args().collect();
-    let command = args[1].clone();
+    let command = args.get(1).ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "No command specified"))?;
     if command == "msg" {
         if args.len() < 3 {
             eprintln!("Usage: <run|msg> <node_id> <message>");
@@ -26,13 +26,15 @@ async fn main() -> Result<(), DynamicError> {
             node_id.clone()
         );
 
-        println!("Sending message (\"{}\") to node {}...", args[3].clone(), node_id);
-        match client.send_client_message(args[3].clone()).await {
-            Ok(response) => {
-                println!("Response received: {:?}", response);
-            }
-            Err(e) => {
-                println!("Error: {:?}", e);
+        for message in args.iter().skip(3) {
+            println!("Sending message (\"{}\") to node {}...", message, node_id);
+            match client.send_client_message(message.to_string()).await {
+                Ok(response) => {
+                    println!("Response received: {:?}", response);
+                }
+                Err(e) => {
+                    eprintln!("Error: {:?}", e);
+                }
             }
         }
 
