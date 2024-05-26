@@ -15,7 +15,7 @@ These instructions will get your copy of the project up and running on your loca
 - Rust Programming Language: Installation guide
 - Protocol Buffers Compiler (protoc): Installation guide
 
-### Installing
+### Installing (Using Cargo)
 1. Clone the repository
 
 ```bash
@@ -34,9 +34,54 @@ cargo build --release
 cargo test
 ```
 
-### Configuration
-!!TODO!!
-Modify the config.toml file in the root directory to adjust the configuration settings such as server ports, node addresses, and other operational parameters.
+### Installing (Using Bazel)
+
+1. Clone the repo
+2. Build the project
+
+```bash
+./bin/build
+```
+
+3. Then the binary should exist here
+
+```bash
+./out/raft_client
+```
+
+4. Alternatively, you can also build the 5 node simulation
+
+```bash
+./bin/build_sim
+./out/run_n_clients
+```
+
+5. If you want to test out remote caching, create a `.bazelrc.local` file and add the contents of NativeLink's quickstart `.bazelrc` to configure. Then run the build again and watch the remote caching work
+
+### Installing (Using Docker) TODO!
+1. Clone the repo
+2. Build the project using Bazel
+3. Docker Build
+
+```bash
+./bin/docker_build
+```
+
+4. Docker Run
+```bash
+./bin/docker_run
+```
+
+(Can also do docker run -f or --force to force it to build as well!)
+```bash
+./bin/docker_run -f
+./bin/docker_run --force
+```
+
+TODO!!! This does not work and returns this error:
+```
+exec /app/raft_client: exec format error
+```
 
 ### Usage
 To start a node:
@@ -56,8 +101,9 @@ The API for interacting with the Raft cluster is defined using protobuf. See pro
 ## License
 Distributed under the MIT License. See LICENSE for more information.
 
-## Acknowledgments
+## Acknowledgments/References
 - [Raft Website](https://raft.github.io/)
 - [Raft Paper](https://raft.github.io/raft.pdf)
+- [Blake's RustyRaft implementation](https://github.com/blakehatch/Rusty-Raft)
 - Tokio Project
 - Rust and the Rust community

@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+# Define the directory path
+build_path="./out"
+
+# Create the directory if it doesn't exist
+if [ ! -d "$build_path" ]; then
+    mkdir -p "$build_path"
+    echo "Directory created: $build_path"
+else
+    echo "Directory already exists: $build_path"
+fi
+
+bazel build //:run_n_clients
+
+cp bazel-bin/run_n_clients "$build_path/run_n_clients"
+chmod u+w "$build_path/run_n_clients"

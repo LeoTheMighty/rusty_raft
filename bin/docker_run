@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "-f" ] || [ "$1" = "--force" ]; then
+  ./bin/docker_build
+fi
+
+docker run --platform=linux/arm64 -it --rm raft
