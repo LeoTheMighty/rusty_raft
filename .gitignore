@@ -1,3 +1,11 @@
 /target
 
 .idea
+
+# Ignore Bazel's remote build cache
+bazel-out
+bazel-testlogs
+bazel-bin
+bazel-rusty_raft
+
+crates

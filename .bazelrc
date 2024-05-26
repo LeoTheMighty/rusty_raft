@@ -1,0 +1,12 @@
+build --enable_bzlmod
+
+test --@rules_rust//:rustfmt.toml=//:.rustfmt.toml
+
+# This will make rustfmt and clippy only run on `bazel test`.
+test --output_groups=+rustfmt_checks
+test --output_groups=+clippy_checks
+
+build:self_execute --remote_executor=grpc://127.0.0.1:50052
+build:self_execute --remote_instance_name=main
+build:self_execute --remote_default_exec_properties=cpu_count=1
+build:self_execute --platform_suffix=self-execute

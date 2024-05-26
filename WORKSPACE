@@ -1,0 +1,1 @@
+# Using bzlmod go to `MODULE.bazel`
