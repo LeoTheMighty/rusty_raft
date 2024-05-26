@@ -35,10 +35,20 @@ rust_binary(
         "@crates//:tonic"
     ],
 )
-#rust_library(
-#    name = "raft_client",
-#    srcs = glob(["src/**/*.rs"]),
-#    crate_root = "src/main.rs",
-#    edition = "2018",
-#    deps = [":vendor"],
-#)
+
+rust_binary(
+    name = "run_n_clients",
+    srcs = glob(["simulations/**/*.rs"]),
+    crate_root = "simulations/run_n_clients.rs",
+    edition = "2021",
+    deps = [
+        "@crates//:colored",
+        "@crates//:prost",
+        "@crates//:prost-types",
+        "@crates//:protobuf",
+        "@crates//:rand",
+        "@crates//:serde",
+        "@crates//:tokio",
+        "@crates//:tonic"
+    ],
+)
